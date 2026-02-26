@@ -1,0 +1,12 @@
+# Credentials - never commit these
+.env
+credentials.json
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# TypeScript build info
+*.tsbuildinfo
