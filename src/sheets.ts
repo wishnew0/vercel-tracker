@@ -47,8 +47,8 @@ export async function appendToSheet(
   visitors: number,
   totalMiu: number,
   dailyMiu: number | '',
-  // webAnalyticsMiu: number,
-  // speedInsightsMiu: number,
+  webAnalyticsMiu: number,
+  speedInsightsMiu: number,
 ) {
   const auth = new google.auth.GoogleAuth({
     credentials: getCredentials(),
@@ -88,22 +88,22 @@ export async function appendToSheet(
     date,                 // B: Tracked on (Date)
     time,                 // C: Timestamp (IST)
     totalMiu,             // D: MIU Consumption (Cumulative)
-    dailyMiu,             // E: Daily Consumption (Difference) = today cumulative - yesterday cumulative
+    dailyMiu,             // E: Daily Consumption (Difference)
     String(visitors),     // F: Visitors (24hrs)
     String(pageViews),    // G: Page Views (24hrs)
-    // webAnalyticsMiu,   // H: Web Analytics (MIU) - latest ChargePeriodStartDate
-    // speedInsightsMiu,  // I: Speed Insights (MIU) - latest ChargePeriodStartDate
+    webAnalyticsMiu,     // H: Web Analytics Events (MIU) for period with ChargePeriodStart just before now
+    speedInsightsMiu,    // I: Speed Insights Data Points (MIU) for same period
   ];
 
   await sheets.spreadsheets.values.append({
     spreadsheetId,
-    range: 'Sheet1!A:G',
+    range: 'Sheet1!A:I',
     valueInputOption: 'USER_ENTERED',
     requestBody: { values: [row] },
   });
 
   console.log(
     `Appended → ${cycleLabel} | ${date} | ${time} | ` +
-    `MIU: ${totalMiu} | Daily MIU: ${dailyMiu === '' ? '(empty)' : dailyMiu} | Visitors: ${visitors} | Page Views: ${pageViews}`
+    `MIU: ${totalMiu} | Daily: ${dailyMiu === '' ? '(empty)' : dailyMiu} | Web Analytics: ${webAnalyticsMiu} | Speed Insights: ${speedInsightsMiu} | Visitors: ${visitors} | Page Views: ${pageViews}`
   );
 }

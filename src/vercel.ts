@@ -56,39 +56,65 @@ export async function fetchBillingCharges(from: string, to: string): Promise<Bil
   const lines = response.data.split('\n').filter(line => line.trim());
 
   let totalMiu = 0;
-  // const webAnalyticsRecords: { date: string; quantity: number }[] = [];
-  // const speedInsightsRecords: { date: string; quantity: number }[] = [];
+  type PeriodRecord = { periodStart: string; periodEnd: string; serviceName: string; quantity: number };
+  const periodRecords: PeriodRecord[] = [];
+
+  const periodStartKey = (r: Record<string, unknown>) =>
+    String(r['ChargePeriodStart'] ?? r['ChargePeriodStartDate'] ?? '');
+  const periodEndKey = (r: Record<string, unknown>) =>
+    String(r['ChargePeriodEnd'] ?? r['ChargePeriodEndDate'] ?? '');
+  const serviceName = (r: Record<string, unknown>) =>
+    String(r['ServiceName'] ?? r['ChargeDescription'] ?? r['ResourceType'] ?? '');
 
   for (const line of lines) {
     const record = JSON.parse(line) as Record<string, unknown>;
     if (String(record['PricingUnit']) !== 'MIUs') continue;
 
     const quantity = Number(record['PricingQuantity'] ?? 0);
-    // const description = String(record['ChargeDescription'] ?? record['ResourceType'] ?? '');
-    // const date = String(record['ChargePeriodStartDate'] ?? '');
-
     totalMiu += quantity;
 
-    // if (description === 'Web Analytics Events') {
-    //   webAnalyticsRecords.push({ date, quantity });
-    // } else if (description === 'Speed Insights Data Points') {
-    //   speedInsightsRecords.push({ date, quantity });
-    // }
+    const name = serviceName(record);
+    if (name === 'Web Analytics Events' || name === 'Speed Insights Data Points') {
+      periodRecords.push({
+        periodStart: periodStartKey(record),
+        periodEnd: periodEndKey(record),
+        serviceName: name,
+        quantity,
+      });
+    }
   }
 
-  // const latestWebDate = webAnalyticsRecords.reduce((max, r) => r.date > max ? r.date : max, '');
-  // const webAnalyticsMiu = webAnalyticsRecords
-  //   .filter(r => r.date === latestWebDate)
-  //   .reduce((sum, r) => sum + r.quantity, 0);
+  const now = new Date();
+  const nowTime = now.getTime();
+  const periods = [...new Set(periodRecords.map((r) => r.periodStart))].filter(Boolean);
+  const periodJustBeforeNow = periods
+    .map((start) => ({ start, startTime: new Date(start).getTime() }))
+    .filter((p) => p.startTime <= nowTime)
+    .sort((a, b) => b.startTime - a.startTime)[0];
 
-  // const latestSpeedDate = speedInsightsRecords.reduce((max, r) => r.date > max ? r.date : max, '');
-  // const speedInsightsMiu = speedInsightsRecords
-  //   .filter(r => r.date === latestSpeedDate)
-  //   .reduce((sum, r) => sum + r.quantity, 0);
+  let webAnalyticsMiu = 0;
+  let speedInsightsMiu = 0;
+  if (periodJustBeforeNow) {
+    const rangeStart = periodJustBeforeNow.start;
+    const matchingRecords = periodRecords.filter((r) => r.periodStart === rangeStart);
+    const periodEnd = matchingRecords[0]?.periodEnd ?? '(unknown)';
+    console.log(
+      '[Billing API] ChargePeriodStart chosen:',
+      rangeStart,
+      '| ChargePeriodEnd:',
+      periodEnd
+    );
+    webAnalyticsMiu = matchingRecords
+      .filter((r) => r.serviceName === 'Web Analytics Events')
+      .reduce((sum, r) => sum + r.quantity, 0);
+    speedInsightsMiu = matchingRecords
+      .filter((r) => r.serviceName === 'Speed Insights Data Points')
+      .reduce((sum, r) => sum + r.quantity, 0);
+  } else {
+    console.log('[Billing API] No ChargePeriodStart chosen (no period with start <= now in response).');
+  }
 
-  // console.log(`Latest ChargePeriodStartDate → Web Analytics: ${latestWebDate} | Speed Insights: ${latestSpeedDate}`);
-
-  return { totalMiu, webAnalyticsMiu: 0, speedInsightsMiu: 0 };
+  return { totalMiu, webAnalyticsMiu, speedInsightsMiu };
 }
 
 export async function fetchAnalyticsData(): Promise<AnalyticsResponse> {

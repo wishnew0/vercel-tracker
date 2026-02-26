@@ -34,7 +34,7 @@ async function run() {
       start, end,
       analytics.total, analytics.devices,
       Math.round(current.totalMiu), dailyMiu,
-      // current.webAnalyticsMiu, current.speedInsightsMiu,
+      current.webAnalyticsMiu, current.speedInsightsMiu,
     );
     console.log('Done.');
   } catch (err) {
