@@ -39,6 +39,7 @@ export interface BillingCharges {
 }
 
 export async function fetchBillingCharges(from: string, to: string): Promise<BillingCharges> {
+  console.log('[Billing API] params sent — from:', JSON.stringify(from), 'to:', JSON.stringify(to));
   const response = await axios.get<string>('https://api.vercel.com/v1/billing/charges', {
     params: {
       from,

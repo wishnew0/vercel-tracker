@@ -1,5 +1,5 @@
 import { fetchUsageData, fetchAnalyticsData, fetchBillingCharges } from './vercel.js';
-import { appendToSheet } from './sheets.js';
+import { appendToSheet, getPreviousMiuFromSheet } from './sheets.js';
 
 async function run() {
   try {
@@ -8,20 +8,23 @@ async function run() {
     const { start, end } = data.current;
     console.log(`Current cycle: ${new Date(start).toISOString()} → ${new Date(end).toISOString()}`);
 
-    const now = new Date();
-    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     const cycleStart = new Date(start).toISOString();
+    const cycleEnd = new Date(end).toISOString();
 
-    console.log('Fetching cumulative MIU (cycle start → now)...');
-    const current = await fetchBillingCharges(cycleStart, now.toISOString());
-    console.log(`Cumulative MIU: ${current.totalMiu}`);
+    console.log('Fetching total MIU (current cycle: start → end)...');
+    const current = await fetchBillingCharges(cycleStart, cycleEnd);
+    console.log(`Total MIU (current cycle): ${current.totalMiu}`);
 
-    console.log('Fetching previous MIU (cycle start → 24h ago)...');
-    const previous = await fetchBillingCharges(cycleStart, yesterday.toISOString());
-    console.log(`Previous MIU: ${previous.totalMiu}`);
-
-    const dailyMiu = Math.round(current.totalMiu - previous.totalMiu);
-    console.log(`Daily MIU: ${dailyMiu}`);
+    const previousMiu = await getPreviousMiuFromSheet();
+    const dailyMiu: number | '' =
+      previousMiu != null
+        ? Math.round(current.totalMiu - previousMiu)
+        : '';
+    console.log(
+      previousMiu != null
+        ? `Daily MIU (current − previous row): ${dailyMiu}`
+        : 'Daily Consumption: (empty — no previous row or cell is header/empty)'
+    );
 
     console.log('Fetching web analytics data (last 24h)...');
     const analytics = await fetchAnalyticsData();

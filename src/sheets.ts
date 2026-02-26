@@ -12,13 +12,41 @@ function getCredentials() {
   return JSON.parse(fs.readFileSync('credentials.json', 'utf-8'));
 }
 
+/** Returns the MIU consumption (column D) from the last data row, or null if sheet is empty or only has header. */
+export async function getPreviousMiuFromSheet(): Promise<number | null> {
+  const auth = new google.auth.GoogleAuth({
+    credentials: getCredentials(),
+    scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+  });
+
+  const sheets = google.sheets({ version: 'v4', auth });
+  const spreadsheetId = process.env.GOOGLE_SHEET_ID;
+  if (!spreadsheetId) throw new Error('Missing required environment variable: GOOGLE_SHEET_ID');
+
+  const result = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: 'Sheet1!D:D',
+  });
+
+  const rows = result.data.values;
+  if (!rows || rows.length < 2) return null; // header only or empty
+
+  // Last row, column D (only column in range); treat empty or header as no previous value
+  const lastRow = rows[rows.length - 1];
+  const lastCell = lastRow?.[0];
+  const raw = typeof lastCell === 'string' ? lastCell.trim() : lastCell;
+  if (raw == null || raw === '') return null;
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : null;
+}
+
 export async function appendToSheet(
   start: number,
   end: number,
   pageViews: number,
   visitors: number,
   totalMiu: number,
-  dailyMiu: number,
+  dailyMiu: number | '',
   // webAnalyticsMiu: number,
   // speedInsightsMiu: number,
 ) {
@@ -76,7 +104,6 @@ export async function appendToSheet(
 
   console.log(
     `Appended → ${cycleLabel} | ${date} | ${time} | ` +
-    `MIU: ${totalMiu} | Daily MIU: ${dailyMiu} | Visitors: ${visitors} | Page Views: ${pageViews} | ` +
-    ``
+    `MIU: ${totalMiu} | Daily MIU: ${dailyMiu === '' ? '(empty)' : dailyMiu} | Visitors: ${visitors} | Page Views: ${pageViews}`
   );
 }
