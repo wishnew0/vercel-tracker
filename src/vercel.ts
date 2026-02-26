@@ -39,7 +39,6 @@ export interface BillingCharges {
 }
 
 export async function fetchBillingCharges(from: string, to: string): Promise<BillingCharges> {
-  console.log('[Billing API] params sent — from:', JSON.stringify(from), 'to:', JSON.stringify(to));
   const response = await axios.get<string>('https://api.vercel.com/v1/billing/charges', {
     params: {
       from,
@@ -97,21 +96,12 @@ export async function fetchBillingCharges(from: string, to: string): Promise<Bil
   if (periodJustBeforeNow) {
     const rangeStart = periodJustBeforeNow.start;
     const matchingRecords = periodRecords.filter((r) => r.periodStart === rangeStart);
-    const periodEnd = matchingRecords[0]?.periodEnd ?? '(unknown)';
-    console.log(
-      '[Billing API] ChargePeriodStart chosen:',
-      rangeStart,
-      '| ChargePeriodEnd:',
-      periodEnd
-    );
     webAnalyticsMiu = matchingRecords
       .filter((r) => r.serviceName === 'Web Analytics Events')
       .reduce((sum, r) => sum + r.quantity, 0);
     speedInsightsMiu = matchingRecords
       .filter((r) => r.serviceName === 'Speed Insights Data Points')
       .reduce((sum, r) => sum + r.quantity, 0);
-  } else {
-    console.log('[Billing API] No ChargePeriodStart chosen (no period with start <= now in response).');
   }
 
   return { totalMiu, webAnalyticsMiu, speedInsightsMiu };

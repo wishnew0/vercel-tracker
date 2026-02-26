@@ -101,9 +101,4 @@ export async function appendToSheet(
     valueInputOption: 'USER_ENTERED',
     requestBody: { values: [row] },
   });
-
-  console.log(
-    `Appended → ${cycleLabel} | ${date} | ${time} | ` +
-    `MIU: ${totalMiu} | Daily: ${dailyMiu === '' ? '(empty)' : dailyMiu} | Web Analytics: ${webAnalyticsMiu} | Speed Insights: ${speedInsightsMiu} | Visitors: ${visitors} | Page Views: ${pageViews}`
-  );
 }
